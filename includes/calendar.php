@@ -1,0 +1,181 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+function wressla_get_timezone(){
+    $tz = get_option('timezone_string');
+    if ( ! $tz ) $tz = 'Europe/Warsaw';
+    $opts = get_option('wressla_core_options',[]);
+    if ( ! empty($opts['tz']) ) $tz = $opts['tz'];
+    return $tz;
+}
+function wressla_get_location(){
+    $opts = get_option('wressla_core_options',[]);
+    return sanitize_text_field( $opts['location'] ?? 'Wrocław, Polska' );
+}
+function wressla_booking_times( $data ){
+    $date = sanitize_text_field($data['date'] ?? '');
+    $time = sanitize_text_field($data['time'] ?? '');
+    if ( empty($date) ) $date = date('Y-m-d');
+    if ( empty($time) ) $time = '12:00';
+    $start_local = strtotime( $date . ' ' . $time );
+    $dur = 60;
+    $trip_id = intval($data['trip'] ?? 0);
+    if ( $trip_id && function_exists('get_field') ){
+        $d = get_field('wressla_duration', $trip_id);
+        if ( $d ) $dur = intval($d);
+    }
+    $end_local = $start_local + $dur * 60;
+    return [$start_local, $end_local];
+}
+function wressla_format_dt_gcal( $ts, $tz ){
+    $dt = new DateTime('@'.$ts);
+    try { $dt->setTimezone( new DateTimeZone($tz) ); } catch(Exception $e) {}
+    return $dt->format('Ymd\THis');
+}
+function wressla_make_gcal_link( $booking_id ){
+    $meta = get_post_meta($booking_id);
+    $data = [];
+    foreach($meta as $k=>$v){ $data[$k] = is_array($v) ? $v[0] : $v; }
+    if ( empty($data['date']) ) return '';
+
+    $tz = wressla_get_timezone();
+    list($start, $end) = wressla_booking_times($data);
+    $text = rawurlencode( get_the_title($booking_id) );
+    $details = rawurlencode( sprintf("Rejs Wressla\nOsób: %s\nTelefon: %s\nE-mail: %s\nUwagi: %s",
+        $data['persons'] ?? '', $data['phone'] ?? '', $data['email'] ?? '', $data['msg'] ?? ''
+    ));
+    $loc = rawurlencode( wressla_get_location() );
+    $dates = wressla_format_dt_gcal($start,$tz) . '/' . wressla_format_dt_gcal($end,$tz);
+    $ctz = rawurlencode($tz);
+    $url = "https://calendar.google.com/calendar/render?action=TEMPLATE&text={$text}&dates={$dates}&details={$details}&location={$loc}&ctz={$ctz}";
+    return $url;
+}
+function wressla_booking_to_ics( $booking_id ){
+    $post = get_post($booking_id);
+    if ( ! $post || $post->post_type !== 'wressla_booking' ) return '';
+    $meta = get_post_meta($booking_id);
+    $data = [];
+    foreach($meta as $k=>$v){ $data[$k] = is_array($v) ? $v[0] : $v; }
+
+    $tzid = wressla_get_timezone();
+    list($start, $end) = wressla_booking_times($data);
+    $uid = 'wressla-booking-'.$booking_id.'@'.parse_url( home_url(), PHP_URL_HOST );
+    $summary = wp_strip_all_tags( get_the_title($booking_id) );
+    $desc = "Rejs Wressla\\nOsób: ".($data['persons'] ?? '')."\\nTelefon: ".($data['phone'] ?? '')."\\nE-mail: ".($data['email'] ?? '')."\\nUwagi: ".str_replace(['\r','\n'],[' ',' '], ($data['msg'] ?? ''));
+    $loc = wressla_get_location();
+
+    $fmt = function($ts,$tz) {
+        $dt = new DateTime('@'.$ts);
+        try { $dt->setTimezone( new DateTimeZone($tz) ); } catch(Exception $e) {}
+        return $dt->format('Ymd\THis');
+    };
+
+    $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Wressla//Core//PL\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n";
+    $ics .= "BEGIN:VEVENT\r\nUID:$uid\r\nDTSTAMP:".$fmt(time(),'UTC')."Z\r\n";
+    $ics .= "DTSTART;TZID:$tzid:".$fmt($start,$tzid)."\r\n";
+    $ics .= "DTEND;TZID:$tzid:".$fmt($end,$tzid)."\r\n";
+    $ics .= "SUMMARY:".esc_html( $summary )."\r\n";
+    $ics .= "DESCRIPTION:".$desc."\r\n";
+    $ics .= "LOCATION:".esc_html( $loc )."\r\n";
+    $ics .= "END:VEVENT\r\nEND:VCALENDAR\r\n";
+    return $ics;
+}
+function wressla_write_ics_file( $booking_id ){
+    $ics = wressla_booking_to_ics($booking_id);
+    if ( empty($ics) ) return '';
+    $up = wp_upload_dir();
+    $dir = trailingslashit($up['basedir']).'wressla';
+    if ( ! file_exists($dir) ) wp_mkdir_p($dir);
+    $path = trailingslashit($dir)."booking-$booking_id.ics";
+    file_put_contents($path, $ics);
+    return $path;
+}
+add_action('rest_api_init', function(){
+    register_rest_route('wressla/v1','/booking-ics', [
+        'methods'  => 'GET',
+        'callback' => function( WP_REST_Request $req ){
+            $id = intval( $req->get_param('id') );
+            if ( ! $id ) return new WP_REST_Response('Missing id', 400);
+            $ics = wressla_booking_to_ics($id);
+            $resp = new WP_REST_Response( $ics, 200 );
+            $resp->set_headers([ 'Content-Type' => 'text/calendar; charset=utf-8' ]);
+            return $resp;
+        },
+        'permission_callback' => '__return_true',
+    ]);
+    register_rest_route('wressla/v1','/calendar', [
+        'methods'  => 'GET',
+        'callback' => function( WP_REST_Request $req ){
+            $source = sanitize_text_field( $req->get_param('source') ?? 'bookings' );
+            $trip_id = intval( $req->get_param('trip') );
+            $tzid = wressla_get_timezone();
+            $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Wressla//Core//PL\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n";
+            if ( $source === 'bookings' ){
+                $q = new WP_Query([
+                    'post_type' => 'wressla_booking',
+                    'post_status' => 'private',
+                    'posts_per_page' => 200,
+                    'orderby' => 'date',
+                    'order' => 'DESC'
+                ]);
+                while( $q->have_posts() ){ $q->the_post();
+                    $ics .= substr( wressla_booking_to_ics( get_the_ID() ), strlen("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Wressla//Core//PL\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n") );
+                }
+                wp_reset_postdata();
+            } else {
+                if ( ! function_exists('get_field') ){
+                    $resp = new WP_REST_Response( 'ACF required for slots feed', 400 );
+                    $resp->set_headers([ 'Content-Type' => 'text/plain; charset=utf-8' ]);
+                    return $resp;
+                }
+                $trips = [];
+                if ( $trip_id ){
+                    $trips = [$trip_id];
+                } else {
+                    $q = new WP_Query([ 'post_type'=>'wressla_trip','posts_per_page'=>-1 ]);
+                    while( $q->have_posts() ){ $q->the_post(); $trips[] = get_the_ID(); }
+                    wp_reset_postdata();
+                }
+                foreach( $trips as $tid ){
+                    $slots = get_field('wressla_slots', $tid) ?: [];
+                    $title = get_the_title($tid);
+                    $dur = get_field('wressla_duration', $tid) ?: 60;
+                    foreach( $slots as $s ){
+                        $start = strtotime($s['date'].' '.$s['time']);
+                        $end = $start + intval($dur)*60;
+                        $uid = 'wressla-slot-'.$tid.'-'.md5($s['date'].' '.$s['time']).'@'.parse_url( home_url(), PHP_URL_HOST );
+                        $fmt = function($ts,$tz){ $dt=new DateTime('@'.$ts); try{$dt->setTimezone(new DateTimeZone($tz));}catch(Exception $e){} return $dt->format('Ymd\THis'); };
+                        $ics .= "BEGIN:VEVENT\r\nUID:$uid\r\nDTSTAMP:".$fmt(time(),'UTC')."Z\r\n";
+                        $ics .= "DTSTART;TZID:$tzid:".$fmt($start,$tzid)."\r\n";
+                        $ics .= "DTEND;TZID:$tzid:".$fmt($end,$tzid)."\r\n";
+                        $ics .= "SUMMARY:".esc_html($title)." – dostępny termin\r\n";
+                        $ics .= "LOCATION:".esc_html( wressla_get_location() )."\r\n";
+                        $ics .= "END:VEVENT\r\n";
+                    }
+                }
+            }
+            $ics .= "END:VCALENDAR\r\n";
+            $resp = new WP_REST_Response( $ics, 200 );
+            $resp->set_headers([ 'Content-Type' => 'text/calendar; charset=utf-8' ]);
+            return $resp;
+        },
+        'permission_callback' => '__return_true',
+    ]);
+});
+add_filter('query_vars', function($vars){
+    $vars[] = 'wressla_ics';
+    return $vars;
+});
+add_action('template_redirect', function(){
+    $ics = get_query_var('wressla_ics');
+    if ( $ics ){
+        $req = new WP_REST_Request('GET','/wressla/v1/calendar');
+        $resp = rest_do_request($req);
+        if ( $resp instanceof WP_REST_Response ){
+            $data = $resp->get_data();
+            header('Content-Type: text/calendar; charset=utf-8');
+            echo $data;
+            exit;
+        }
+    }
+});
