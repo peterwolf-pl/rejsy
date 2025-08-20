@@ -201,6 +201,10 @@ function wressla_submit_booking() {
     $attachments = $ics_path ? [$ics_path] : [];
     wp_mail( $admin, 'Wressla – Nowa rezerwacja', $body, [], $attachments );
 
+    if ( function_exists('wressla_insert_booking_to_gcal') ){
+        wressla_insert_booking_to_gcal( $post_id );
+    }
+
     wp_send_json_success([
         'message' => __('Rezerwacja zapisana. Skontaktujemy się w celu potwierdzenia.', 'wressla-core'),
         'gcal'    => $gcal,
