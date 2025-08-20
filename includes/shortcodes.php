@@ -190,10 +190,6 @@ function wressla_submit_booking() {
     $key = wp_generate_password(20,false);
     update_post_meta($post_id,'wressla_confirm_key',$key);
 
-    if ( function_exists('wressla_gcal_add_booking_event') ) {
-        wressla_gcal_add_booking_event( $post_id );
-    }
-
     $link = add_query_arg(['wressla_confirm'=>$post_id,'key'=>$key], home_url('/'));
     wp_mail( $data['email'], __('Wressla – potwierdź rezerwację','wressla-core'), sprintf(__('Potwierdź rezerwację klikając: %s','wressla-core'), $link) );
 
@@ -213,6 +209,10 @@ function wressla_handle_booking_confirmation(){
         if ( $stored && hash_equals($stored,$key) ){
             update_post_meta($bid,'confirmed',1);
             delete_post_meta($bid,'wressla_confirm_key');
+
+            if ( function_exists('wressla_gcal_add_booking_event') ) {
+                wressla_gcal_add_booking_event( $bid );
+            }
 
             $meta = get_post_meta($bid, '', true);
             $body = "Potwierdzona rezerwacja Wressla\n\n";

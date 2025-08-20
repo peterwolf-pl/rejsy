@@ -49,6 +49,13 @@ function wressla_gcal_add_booking_event( $booking_id ){
     list($start_ts, $end_ts) = wressla_booking_times( $data );
     $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
 
+    $start = new DateTime('@'.$start_ts);
+    $end   = new DateTime('@'.$end_ts);
+    try {
+        $start->setTimezone( new DateTimeZone($tz) );
+        $end->setTimezone( new DateTimeZone($tz) );
+    } catch ( Exception $e ) {}
+
     $event = [
         'summary'     => get_the_title( $booking_id ),
         'description' => sprintf(
@@ -59,20 +66,25 @@ function wressla_gcal_add_booking_event( $booking_id ){
             $data['msg'] ?? ''
         ),
         'start' => [
-            'dateTime' => date( DateTime::RFC3339, $start_ts ),
+            'dateTime' => $start->format(DateTime::RFC3339),
             'timeZone' => $tz
         ],
         'end'   => [
-            'dateTime' => date( DateTime::RFC3339, $end_ts ),
+            'dateTime' => $end->format(DateTime::RFC3339),
             'timeZone' => $tz
         ],
         'location' => function_exists('wressla_get_location') ? wressla_get_location() : ''
     ];
 
     $url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($cal_id) . '/events?key=' . $api_key;
-    wp_remote_post( $url, [
+    $resp = wp_remote_post( $url, [
         'headers' => [ 'Content-Type' => 'application/json' ],
         'body'    => wp_json_encode( $event ),
         'timeout' => 15,
     ] );
+    if ( is_wp_error( $resp ) ) {
+        error_log( 'GCal insert error: ' . $resp->get_error_message() );
+    } elseif ( wp_remote_retrieve_response_code( $resp ) >= 300 ) {
+        error_log( 'GCal insert error: HTTP ' . wp_remote_retrieve_response_code( $resp ) );
+    }
 }
