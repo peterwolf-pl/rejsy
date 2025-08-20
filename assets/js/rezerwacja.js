@@ -7,11 +7,7 @@
         $.post(WRESSLA_REZ.ajax, $f.serialize())
             .done(function(resp){
                 if(resp && resp.success){
-                    if (resp.data && resp.data.redirect){
-                        window.location.href = resp.data.redirect;
-                        return;
-                    }
-                    $s.html(WRESSLA_REZ.ok);
+                    $s.html(WRESSLA_REZ.ok + (resp.data && resp.data.gcal ? ' <a target="_blank" rel="noopener" href="'+resp.data.gcal+'">Dodaj do Google Calendar</a>' : ''));
                     $f[0].reset();
                 } else {
                     $s.text((resp && resp.data && resp.data.message) || WRESSLA_REZ.fail);
