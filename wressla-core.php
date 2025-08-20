@@ -36,6 +36,7 @@ wressla_core_require('includes/hreflang.php');
 wressla_core_require('includes/performance.php');
 wressla_core_require('includes/rest.php');
 wressla_core_require('includes/calendar.php');
+wressla_core_require('includes/gcal.php');
 
 register_activation_hook( __FILE__, function(){
     if ( function_exists('wressla_register_cpts') ) {

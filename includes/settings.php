@@ -17,7 +17,9 @@ function wressla_register_settings(){
             'location' => 'Wrocław, Polska',
             'google_client_id' => '',
             'facebook_app_id' => '',
-            'facebook_app_secret' => ''
+            'facebook_app_secret' => '',
+            'gcal_api_key' => '',
+            'gcal_calendar_id' => ''
         ]
     ]);
 }
@@ -31,6 +33,8 @@ function wressla_sanitize_options($opts){
     $opts['google_client_id'] = sanitize_text_field($opts['google_client_id'] ?? '');
     $opts['facebook_app_id'] = sanitize_text_field($opts['facebook_app_id'] ?? '');
     $opts['facebook_app_secret'] = sanitize_text_field($opts['facebook_app_secret'] ?? '');
+    $opts['gcal_api_key'] = sanitize_text_field($opts['gcal_api_key'] ?? '');
+    $opts['gcal_calendar_id'] = sanitize_text_field($opts['gcal_calendar_id'] ?? '');
     return $opts;
 }
 
@@ -51,6 +55,8 @@ function wressla_settings_page(){
                 <tr><th colspan="2"><h2>Kalendarz</h2></th></tr>
                 <tr><th>Strefa czasowa</th><td><input type="text" name="wressla_core_options[tz]" value="<?php echo esc_attr($opts['tz'] ?? 'Europe/Warsaw'); ?>"></td></tr>
                 <tr><th>Lokalizacja (mapa/spotkanie)</th><td><input type="text" name="wressla_core_options[location]" value="<?php echo esc_attr($opts['location'] ?? 'Wrocław, Polska'); ?>" size="60"></td></tr>
+                <tr><th>Google Calendar API Key</th><td><input type="text" name="wressla_core_options[gcal_api_key]" value="<?php echo esc_attr($opts['gcal_api_key'] ?? ''); ?>" size="60"></td></tr>
+                <tr><th>ID kalendarza Google</th><td><input type="text" name="wressla_core_options[gcal_calendar_id]" value="<?php echo esc_attr($opts['gcal_calendar_id'] ?? ''); ?>" size="60"></td></tr>
                 <tr><td colspan="2">
                     <p><strong>Subskrypcja ICS (Google Calendar → From URL):</strong><br>
                     Rezerwacje: <code><?php echo esc_html( home_url('/?wressla_ics=1') ); ?></code><br>

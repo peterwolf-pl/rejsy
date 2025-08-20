@@ -167,6 +167,14 @@ function wressla_submit_booking() {
         }
     }
 
+    // Google Calendar availability check
+    if ( function_exists('wressla_booking_times') && function_exists('wressla_gcal_is_free') ) {
+        list($start_ts, $end_ts) = wressla_booking_times( $data );
+        if ( ! wressla_gcal_is_free( $start_ts, $end_ts ) ) {
+            wp_send_json_error(['message'=>__('Termin jest już zajęty w Kalendarzu Google.','wressla-core')], 409);
+        }
+    }
+
     $title = sprintf( 'Rezerwacja %s (%s %s) – %s os.', $data['trip'], $data['date'], $data['time'], $data['persons'] );
     $post_id = wp_insert_post([
         'post_type'   => 'wressla_booking',
