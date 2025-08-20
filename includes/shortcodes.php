@@ -21,39 +21,11 @@ add_action('wp_enqueue_scripts','wressla_enqueue_assets');
 
 function wressla_rezerwacja_shortcode( $atts = [] ) {
     wp_enqueue_script('wressla-rez');
-    ob_start(); ?>
-
-    <?php
-    if( ! is_user_logged_in() ):
-    ?>
-        <div class="wressla-login-req">
-            <p><?php _e('Wybierz sposób rezerwacji:', 'wressla-core'); ?></p>
-            <div class="wressla-login-option email">
-                <h3><?php _e('Zarezerwuj potwierdzając e-mail', 'wressla-core'); ?></h3>
-                <?php echo wressla_register_shortcode(); ?>
-            </div>
-            <div class="wressla-login-option facebook">
-                <h3><?php _e('Zarezerwuj przez Facebook', 'wressla-core'); ?></h3>
-                <?php echo do_shortcode('[wressla_social_login provider="facebook"]'); ?>
-            </div>
-            <div class="wressla-login-option google">
-                <h3><?php _e('Zarezerwuj przez Google', 'wressla-core'); ?></h3>
-                <?php echo do_shortcode('[wressla_social_login provider="google"]'); ?>
-            </div>
-        </div>
-        <?php return ob_get_clean(); endif;
-
-    $uid = get_current_user_id();
-    $verified = get_user_meta($uid,'wressla_email_verified',true);
-    $user_phone = get_user_meta($uid,'wressla_phone',true);
-    if( ! $verified ){
-        echo '<div class="wressla-login-req"><p>'.__('Zweryfikuj adres e-mail, aby zarezerwować.','wressla-core').'</p></div>';
-        return ob_get_clean();
-    }
-    if( empty($user_phone) ){
-        echo '<div class="wressla-login-req"><p>'.__('Uzupełnij numer telefonu w profilu.','wressla-core').'</p></div>';
-        return ob_get_clean();
-    }
+    $uid        = get_current_user_id();
+    $user       = wp_get_current_user();
+    $verified   = $uid ? get_user_meta( $uid, 'wressla_email_verified', true ) : false;
+    $user_phone = get_user_meta( $uid, 'wressla_phone', true );
+    ob_start();
     ?>
 
     <form id="wressla-rez-form" class="wressla-form">
@@ -75,15 +47,15 @@ function wressla_rezerwacja_shortcode( $atts = [] ) {
         <div class="row">
             <div class="col">
                 <label><?php _e('Imię i nazwisko', 'wressla-core'); ?></label>
-                <input type="text" name="name" value="<?php echo esc_attr( wp_get_current_user()->display_name ); ?>" required>
+                <input type="text" name="name" value="<?php echo esc_attr( $user->display_name ); ?>" required>
             </div>
             <div class="col">
                 <label><?php _e('Telefon', 'wressla-core'); ?></label>
-                <input type="tel" name="phone" value="<?php echo esc_attr($user_phone); ?>" required>
+                <input type="tel" name="phone" value="<?php echo esc_attr( $user_phone ); ?>" required>
             </div>
             <div class="col">
                 <label><?php _e('E-mail', 'wressla-core'); ?></label>
-                <input type="email" name="email" value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" required>
+                <input type="email" name="email" value="<?php echo esc_attr( $user->user_email ); ?>" required>
             </div>
         </div>
 
@@ -140,7 +112,26 @@ function wressla_rezerwacja_shortcode( $atts = [] ) {
         <button type="submit"><?php _e('Zarezerwuj', 'wressla-core'); ?></button>
         <div class="wressla-rez-status" aria-live="polite"></div>
     </form>
-    <?php
+
+    <?php if ( ! is_user_logged_in() ) : ?>
+        <div class="wressla-login-req">
+            <p><?php _e('Aby wysłać rezerwację, zaloguj się lub zarejestruj:', 'wressla-core'); ?></p>
+            <div class="wressla-login-option email">
+                <h3><?php _e('Zarezerwuj potwierdzając e-mail', 'wressla-core'); ?></h3>
+                <?php echo wressla_register_shortcode(); ?>
+            </div>
+            <div class="wressla-login-option facebook">
+                <h3><?php _e('Zarezerwuj przez Facebook', 'wressla-core'); ?></h3>
+                <?php echo do_shortcode('[wressla_social_login provider="facebook"]'); ?>
+            </div>
+            <div class="wressla-login-option google">
+                <h3><?php _e('Zarezerwuj przez Google', 'wressla-core'); ?></h3>
+                <?php echo do_shortcode('[wressla_social_login provider="google"]'); ?>
+            </div>
+        </div>
+    <?php elseif ( ! $verified ) : ?>
+        <div class="wressla-login-req"><p><?php _e('Zweryfikuj adres e-mail, aby zarezerwować.', 'wressla-core'); ?></p></div>
+    <?php endif;
     return ob_get_clean();
 }
 add_shortcode('wressla_rezerwacja','wressla_rezerwacja_shortcode');
