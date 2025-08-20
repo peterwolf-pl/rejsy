@@ -40,17 +40,18 @@ add_action('rest_api_init', function(){
         }
     ]);
 });
-function wressla_social_login_shortcode(){
+function wressla_social_login_shortcode( $atts = [] ){
     $opts = get_option('wressla_core_options',[]);
+    $atts = shortcode_atts(['provider'=>'all'], $atts, 'wressla_social_login');
     ob_start(); ?>
-    <div id="wressla-social-login">
+    <div class="wressla-social-login">
         <div class="providers">
-            <?php if ( ! empty($opts['google_client_id']) ) : ?>
+            <?php if ( ( $atts['provider'] === 'all' || $atts['provider'] === 'google' ) && ! empty($opts['google_client_id']) ) : ?>
                 <div id="g_id_onload" data-client_id="<?php echo esc_attr($opts['google_client_id']); ?>" data-context="signin" data-callback="wresslaGoogleCB" data-auto_prompt="false"></div>
                 <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rect" data-logo_alignment="left"></div>
                 <script src="https://accounts.google.com/gsi/client" async defer></script>
             <?php endif; ?>
-            <?php if ( ! empty($opts['facebook_app_id']) ) : ?>
+            <?php if ( ( $atts['provider'] === 'all' || $atts['provider'] === 'facebook' ) && ! empty($opts['facebook_app_id']) ) : ?>
                 <div id="fb-root"></div>
                 <div class="fb-login-button" data-onlogin="wresslaFacebookCB();" data-width="" data-size="large" data-button-type="continue_with" data-layout="default" data-auto-logout-link="false" data-use-continue-as="true"></div>
                 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
@@ -59,12 +60,15 @@ function wressla_social_login_shortcode(){
         </div>
     </div>
     <script>
+    <?php if ( $atts['provider'] === 'all' || $atts['provider'] === 'google' ) : ?>
     function wresslaGoogleCB(resp){
         if(!resp || !resp.credential){ return; }
         fetch('<?php echo esc_js( rest_url('wressla/v1/google-login') ); ?>',{
             method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id_token: resp.credential})
         }).then(r=>r.json()).then(function(data){ if(data && data.ok){ location.reload(); } });
     }
+    <?php endif; ?>
+    <?php if ( $atts['provider'] === 'all' || $atts['provider'] === 'facebook' ) : ?>
     function wresslaFacebookCB(){
         FB.getLoginStatus(function(status){
             if(status && status.status==='connected'){
@@ -74,6 +78,7 @@ function wressla_social_login_shortcode(){
             }
         });
     }
+    <?php endif; ?>
     </script>
     <?php return ob_get_clean();
 }

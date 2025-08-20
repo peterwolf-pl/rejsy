@@ -48,7 +48,7 @@ function wressla_register_shortcode(){
     $out .= '<div class="row"><div class="col"><label>'.esc_html__('Telefon','wressla-core').' <input type="tel" name="phone" required></label></div></div>';
     $out .= '<div class="row"><div class="col"><label>'.esc_html__('Hasło','wressla-core').' <input type="password" name="pass" required></label></div></div>';
     $out .= wp_nonce_field('wressla_reg','wressla_reg_nonce',true,false);
-    $out .= '<button type="submit">'.esc_html__('Zarejestruj','wressla-core').'</button>';
+    $out .= '<button type="submit">'.esc_html__('Zarezerwuj','wressla-core').'</button>';
     $out .= '</form>';
     return $out;
 }

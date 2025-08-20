@@ -27,9 +27,19 @@ function wressla_rezerwacja_shortcode( $atts = [] ) {
     if( ! is_user_logged_in() ):
     ?>
         <div class="wressla-login-req">
-            <p><?php _e('Do rezerwacji wymagane jest zalogowanie przez Google lub Facebook lub założenie konta. Podaj numer telefonu.', 'wressla-core'); ?></p>
-            <?php echo do_shortcode('[wressla_social_login]'); ?>
-            <?php echo do_shortcode('[wressla_register]'); ?>
+            <p><?php _e('Wybierz sposób rezerwacji:', 'wressla-core'); ?></p>
+            <div class="wressla-login-option email">
+                <h3><?php _e('Zarezerwuj potwierdzając e-mail', 'wressla-core'); ?></h3>
+                <?php echo wressla_register_shortcode(); ?>
+            </div>
+            <div class="wressla-login-option facebook">
+                <h3><?php _e('Zarezerwuj przez Facebook', 'wressla-core'); ?></h3>
+                <?php echo do_shortcode('[wressla_social_login provider="facebook"]'); ?>
+            </div>
+            <div class="wressla-login-option google">
+                <h3><?php _e('Zarezerwuj przez Google', 'wressla-core'); ?></h3>
+                <?php echo do_shortcode('[wressla_social_login provider="google"]'); ?>
+            </div>
         </div>
         <?php return ob_get_clean(); endif;
 
