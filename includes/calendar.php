@@ -12,6 +12,10 @@ function wressla_get_location(){
     $opts = get_option('wressla_core_options',[]);
     return sanitize_text_field( $opts['location'] ?? 'Wrocław, Polska' );
 }
+
+function wressla_base64url_encode( $data ){
+    return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
+}
 function wressla_booking_times( $data ){
     $date = sanitize_text_field($data['date'] ?? '');
     $time = sanitize_text_field($data['time'] ?? '');
@@ -78,6 +82,68 @@ function wressla_write_ics_file( $booking_id ){
     $path = trailingslashit($dir)."booking-$booking_id.ics";
     file_put_contents($path, $ics);
     return $path;
+}
+
+function wressla_insert_booking_to_gcal( $booking_id ){
+    $opts = get_option('wressla_core_options', []);
+    $cal_id = sanitize_text_field( $opts['google_calendar_id'] ?? '' );
+    $creds_json = $opts['google_service_account_json'] ?? '';
+    if ( empty($cal_id) || empty($creds_json) ) return;
+
+    $creds = json_decode( $creds_json, true );
+    if ( empty($creds['client_email']) || empty($creds['private_key']) ) return;
+
+    $now = time();
+    $jwt_header = wressla_base64url_encode( json_encode(['alg'=>'RS256','typ'=>'JWT']) );
+    $jwt_claim = wressla_base64url_encode( json_encode([
+        'iss'   => $creds['client_email'],
+        'scope' => 'https://www.googleapis.com/auth/calendar',
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'exp'   => $now + 3600,
+        'iat'   => $now,
+    ]) );
+    $sig_input = $jwt_header . '.' . $jwt_claim;
+    openssl_sign( $sig_input, $signature, $creds['private_key'], 'sha256' );
+    $jwt = $sig_input . '.' . wressla_base64url_encode( $signature );
+
+    $resp = wp_remote_post( 'https://oauth2.googleapis.com/token', [
+        'body' => [
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion'  => $jwt,
+        ],
+    ]);
+    if ( is_wp_error($resp) ) return;
+    $data = json_decode( wp_remote_retrieve_body($resp), true );
+    $token = $data['access_token'] ?? '';
+    if ( empty($token) ) return;
+
+    $meta = get_post_meta($booking_id);
+    $bdata = [];
+    foreach( $meta as $k=>$v ){ $bdata[$k] = is_array($v) ? $v[0] : $v; }
+    if ( empty($bdata['date']) ) return;
+    $tz = wressla_get_timezone();
+    list($start, $end) = wressla_booking_times($bdata);
+    $event = [
+        'summary'     => get_the_title($booking_id),
+        'description' => sprintf(
+            "Rejs Wressla\nOsób: %s\nTelefon: %s\nE-mail: %s\nUwagi: %s",
+            $bdata['persons'] ?? '',
+            $bdata['phone'] ?? '',
+            $bdata['email'] ?? '',
+            $bdata['msg'] ?? ''
+        ),
+        'location'    => wressla_get_location(),
+        'start'       => [ 'dateTime' => gmdate('c', $start), 'timeZone' => $tz ],
+        'end'         => [ 'dateTime' => gmdate('c', $end), 'timeZone' => $tz ],
+    ];
+
+    wp_remote_post( 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($cal_id) . '/events', [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $token,
+            'Content-Type'  => 'application/json',
+        ],
+        'body' => wp_json_encode( $event ),
+    ] );
 }
 add_action('rest_api_init', function(){
     register_rest_route('wressla/v1','/booking-ics', [
@@ -154,3 +220,23 @@ add_action('template_redirect', function(){
         }
     }
 });
+
+function wressla_admin_calendar_page(){
+    if ( ! current_user_can('manage_options') ) return;
+    $opts = get_option('wressla_core_options', []);
+    $cal_id = sanitize_text_field( $opts['google_calendar_id'] ?? '' );
+    $tz = wressla_get_timezone();
+    echo '<div class="wrap"><h1>Kalendarz rezerwacji</h1>';
+    if ( $cal_id ){
+        $src = 'https://calendar.google.com/calendar/embed?src=' . rawurlencode($cal_id) . '&ctz=' . rawurlencode($tz);
+        echo '<iframe src="' . esc_url($src) . '" style="border:0" width="100%" height="600" frameborder="0" scrolling="no"></iframe>';
+    } else {
+        echo '<p>' . esc_html__( 'Brak skonfigurowanego kalendarza Google.', 'wressla-core' ) . '</p>';
+    }
+    echo '</div>';
+}
+
+function wressla_admin_calendar_menu(){
+    add_submenu_page('wressla-core', 'Kalendarz', 'Kalendarz', 'manage_options', 'wressla-calendar', 'wressla_admin_calendar_page');
+}
+add_action('admin_menu','wressla_admin_calendar_menu');
