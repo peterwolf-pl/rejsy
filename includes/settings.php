@@ -3,8 +3,24 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 function wressla_settings_menu(){
     add_menu_page('Wressla','Wressla','manage_options','wressla-core','wressla_settings_page','dashicons-admin-generic',58);
+    add_submenu_page('wressla-core','Kalendarz','Kalendarz','manage_options','wressla-bookings-calendar','wressla_bookings_calendar_page');
 }
 add_action('admin_menu','wressla_settings_menu');
+
+function wressla_bookings_calendar_page(){
+    if ( ! current_user_can('manage_options') ) return;
+    $opts = get_option('wressla_core_options',[]);
+    $cal_id = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
+    $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
+    echo '<div class="wrap"><h1>' . esc_html__( 'Kalendarz rezerwacji', 'wressla-core' ) . '</h1>';
+    if ( $cal_id ) {
+        $src = 'https://calendar.google.com/calendar/embed?src=' . rawurlencode( $cal_id ) . '&ctz=' . rawurlencode( $tz );
+        echo '<iframe src="' . esc_url( $src ) . '" style="border:0" width="100%" height="600" frameborder="0" scrolling="no"></iframe>';
+    } else {
+        echo '<p>' . esc_html__( 'Brak konfiguracji kalendarza Google.', 'wressla-core' ) . '</p>';
+    }
+    echo '</div>';
+}
 
 function wressla_register_settings(){
     register_setting('wressla_core_options_group','wressla_core_options',[

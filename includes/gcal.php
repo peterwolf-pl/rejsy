@@ -31,3 +31,48 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
     if ( ! empty( $body['items'] ) ) return false; // conflict
     return true;
 }
+
+function wressla_gcal_add_booking_event( $booking_id ){
+    $opts = get_option('wressla_core_options', []);
+    $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
+    $cal_id  = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
+    if ( empty($api_key) || empty($cal_id) ) return; // brak konfiguracji
+
+    $meta = get_post_meta($booking_id);
+    $data = [];
+    foreach( $meta as $k => $v ){
+        $data[$k] = is_array($v) ? $v[0] : $v;
+    }
+    if ( empty($data['date']) ) return;
+    if ( ! function_exists('wressla_booking_times') ) return;
+
+    list($start_ts, $end_ts) = wressla_booking_times( $data );
+    $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
+
+    $event = [
+        'summary'     => get_the_title( $booking_id ),
+        'description' => sprintf(
+            "Rejs Wressla\nOsób: %s\nTelefon: %s\nE-mail: %s\nUwagi: %s",
+            $data['persons'] ?? '',
+            $data['phone'] ?? '',
+            $data['email'] ?? '',
+            $data['msg'] ?? ''
+        ),
+        'start' => [
+            'dateTime' => date( DateTime::RFC3339, $start_ts ),
+            'timeZone' => $tz
+        ],
+        'end'   => [
+            'dateTime' => date( DateTime::RFC3339, $end_ts ),
+            'timeZone' => $tz
+        ],
+        'location' => function_exists('wressla_get_location') ? wressla_get_location() : ''
+    ];
+
+    $url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($cal_id) . '/events?key=' . $api_key;
+    wp_remote_post( $url, [
+        'headers' => [ 'Content-Type' => 'application/json' ],
+        'body'    => wp_json_encode( $event ),
+        'timeout' => 15,
+    ] );
+}

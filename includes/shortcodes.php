@@ -190,6 +190,10 @@ function wressla_submit_booking() {
     $key = wp_generate_password(20,false);
     update_post_meta($post_id,'wressla_confirm_key',$key);
 
+    if ( function_exists('wressla_gcal_add_booking_event') ) {
+        wressla_gcal_add_booking_event( $post_id );
+    }
+
     $link = add_query_arg(['wressla_confirm'=>$post_id,'key'=>$key], home_url('/'));
     wp_mail( $data['email'], __('Wressla – potwierdź rezerwację','wressla-core'), sprintf(__('Potwierdź rezerwację klikając: %s','wressla-core'), $link) );
 
