@@ -23,12 +23,28 @@ function wressla_rezerwacja_shortcode( $atts = [] ) {
     wp_enqueue_script('wressla-rez');
     ob_start(); ?>
 
-    <?php if( ! is_user_logged_in() ): ?>
+    <?php
+    if( ! is_user_logged_in() ):
+    ?>
         <div class="wressla-login-req">
-            <p><?php _e('Do rezerwacji wymagane jest zalogowanie przez Google lub Facebook oraz podanie numeru telefonu.', 'wressla-core'); ?></p>
+            <p><?php _e('Do rezerwacji wymagane jest zalogowanie przez Google lub Facebook lub założenie konta. Podaj numer telefonu.', 'wressla-core'); ?></p>
             <?php echo do_shortcode('[wressla_social_login]'); ?>
+            <?php echo do_shortcode('[wressla_register]'); ?>
         </div>
-        <?php return ob_get_clean(); endif; ?>
+        <?php return ob_get_clean(); endif;
+
+    $uid = get_current_user_id();
+    $verified = get_user_meta($uid,'wressla_email_verified',true);
+    $user_phone = get_user_meta($uid,'wressla_phone',true);
+    if( ! $verified ){
+        echo '<div class="wressla-login-req"><p>'.__('Zweryfikuj adres e-mail, aby zarezerwować.','wressla-core').'</p></div>';
+        return ob_get_clean();
+    }
+    if( empty($user_phone) ){
+        echo '<div class="wressla-login-req"><p>'.__('Uzupełnij numer telefonu w profilu.','wressla-core').'</p></div>';
+        return ob_get_clean();
+    }
+    ?>
 
     <form id="wressla-rez-form" class="wressla-form">
         <div class="row">
@@ -53,7 +69,7 @@ function wressla_rezerwacja_shortcode( $atts = [] ) {
             </div>
             <div class="col">
                 <label><?php _e('Telefon', 'wressla-core'); ?></label>
-                <input type="tel" name="phone" required>
+                <input type="tel" name="phone" value="<?php echo esc_attr($user_phone); ?>" required>
             </div>
             <div class="col">
                 <label><?php _e('E-mail', 'wressla-core'); ?></label>
@@ -125,6 +141,11 @@ function wressla_submit_booking() {
     }
     check_ajax_referer('wressla_rez_nonce','nonce');
 
+    $uid = get_current_user_id();
+    if ( ! get_user_meta($uid,'wressla_email_verified',true) ) {
+        wp_send_json_error(['message'=>__('Zweryfikuj adres e-mail, aby zarezerwować.','wressla-core')], 403);
+    }
+
     $data = [
         'date'    => sanitize_text_field($_POST['date'] ?? ''),
         'time'    => sanitize_text_field($_POST['time'] ?? ''),
@@ -148,6 +169,8 @@ function wressla_submit_booking() {
     if ( empty($data['phone']) ){
         wp_send_json_error(['message' => __('Telefon jest wymagany.', 'wressla-core')], 400);
     }
+
+    update_user_meta($uid,'wressla_phone',$data['phone']);
 
     // Capacity check & decrement
     $trip_id = intval($data['trip']);
