@@ -225,7 +225,34 @@ function wressla_handle_booking_confirmation(){
             $attachments = $ics_path ? [$ics_path] : [];
             wp_mail( $admin, 'Wressla – Potwierdzona rezerwacja', $body, [], $attachments );
 
-            wp_die( __('Dziękujemy! Rezerwacja została potwierdzona.', 'wressla-core') );
+            $trip_title = '';
+            if ( ! empty( $meta['trip'][0] ) ) {
+                $trip_title = get_the_title( intval( $meta['trip'][0] ) );
+            }
+
+            $details  = '<ul class="wressla-confirm-details">';
+            if ( $trip_title ) {
+                $details .= '<li>' . sprintf( __( 'Rejs: %s', 'wressla-core' ), esc_html( $trip_title ) ) . '</li>';
+            }
+            if ( ! empty( $meta['date'][0] ) || ! empty( $meta['time'][0] ) ) {
+                $date  = esc_html( $meta['date'][0] ?? '' );
+                $time  = esc_html( $meta['time'][0] ?? '' );
+                $details .= '<li>' . sprintf( __( 'Termin: %s %s', 'wressla-core' ), $date, $time ) . '</li>';
+            }
+            if ( ! empty( $meta['persons'][0] ) ) {
+                $details .= '<li>' . sprintf( __( 'Osób: %s', 'wressla-core' ), esc_html( $meta['persons'][0] ) ) . '</li>';
+            }
+            if ( ! empty( $meta['name'][0] ) ) {
+                $details .= '<li>' . sprintf( __( 'Imię i nazwisko: %s', 'wressla-core' ), esc_html( $meta['name'][0] ) ) . '</li>';
+            }
+            if ( ! empty( $meta['phone'][0] ) ) {
+                $details .= '<li>' . sprintf( __( 'Telefon: %s', 'wressla-core' ), esc_html( $meta['phone'][0] ) ) . '</li>';
+            }
+            $details .= '</ul>';
+
+            $message = '<p>' . __( 'Dziękujemy! Rezerwacja została potwierdzona.', 'wressla-core' ) . '</p>' . $details;
+
+            wp_die( $message, __( 'Rezerwacja potwierdzona', 'wressla-core' ), [ 'response' => 200 ] );
         } else {
             wp_die( __('Nieprawidłowy link potwierdzający.', 'wressla-core') );
         }
