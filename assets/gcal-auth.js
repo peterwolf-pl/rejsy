@@ -6,16 +6,6 @@
     let gapiInited = false;
     let gisInited = false;
 
-    function maybeHandle401(err){
-        const code = err && (err.status || (err.result && err.result.error && err.result.error.code));
-        if (code === 401){
-            try{ window.handleSignoutClick(); }catch(e){}
-            alert('Google authorization expired. Please authorize again.');
-            return true;
-        }
-        return false;
-    }
-
     function enableAuthorizeButton(){
         if (!gapiInited || !gisInited) return;
         const btn = document.getElementById('authorize_button');
@@ -62,7 +52,7 @@
             }
             const token = gapi.client.getToken();
             if (token && token.access_token){
-                const expiresAt = token.expires_in ? Math.floor(Date.now()/1000) + parseInt(token.expires_in,10) : '';
+                const expires = token.expires_in ? Math.floor(Date.now()/1000) + parseInt(token.expires_in,10) : 0;
                 try{
                     await fetch(wresslaGCal.ajaxUrl, {
                         method: 'POST',
@@ -71,7 +61,7 @@
                         body: 'action=wressla_gcal_save_token'
                               + '&nonce=' + encodeURIComponent(wresslaGCal.nonce)
                               + '&token=' + encodeURIComponent(token.access_token)
-                              + '&expiry=' + encodeURIComponent(expiresAt),
+                              + '&expires=' + expires,
                     });
                     const signout = document.getElementById('signout_button');
                     if (signout) signout.style.display = 'inline-block';
@@ -84,7 +74,7 @@
             try{
                 await listUpcomingEvents();
             }catch(e){
-                if (!maybeHandle401(e)) console.warn('List events failed', e);
+                console.warn('List events failed', e);
             }
         };
         if (gapi.client.getToken() === null){
@@ -111,9 +101,8 @@
     };
 
     async function listUpcomingEvents(){
-        let resp;
         try{
-            resp = await gapi.client.calendar.events.list({
+            const resp = await gapi.client.calendar.events.list({
                 calendarId: 'primary',
                 timeMin: (new Date()).toISOString(),
                 showDeleted: false,
@@ -121,22 +110,27 @@
                 maxResults: 5,
                 orderBy: 'startTime',
             });
+            const events = resp && resp.result ? resp.result.items : [];
+            const content = document.getElementById('content');
+            if (!content) return;
+            if (!events || !events.length){
+                content.textContent = 'No events found.';
+                return;
+            }
+            let out = 'Events:\n';
+            for (const ev of events){
+                const when = ev.start.dateTime || ev.start.date || '';
+                out += `${ev.summary || '(no title)'} (${when})\n`;
+            }
+            content.textContent = out;
         }catch(e){
-            if (!maybeHandle401(e)) throw e;
-            return;
+            const code = e.status || (e.result && e.result.error && e.result.error.code);
+            if (code === 401){
+                alert('Google authorization expired. Please authorize again.');
+                handleSignoutClick();
+                return;
+            }
+            throw e;
         }
-        const events = resp && resp.result ? resp.result.items : [];
-        const content = document.getElementById('content');
-        if (!content) return;
-        if (!events || !events.length){
-            content.textContent = 'No events found.';
-            return;
-        }
-        let out = 'Events:\n';
-        for (const ev of events){
-            const when = ev.start.dateTime || ev.start.date || '';
-            out += `${ev.summary || '(no title)'} (${when})\n`;
-        }
-        content.textContent = out;
     }
 })();

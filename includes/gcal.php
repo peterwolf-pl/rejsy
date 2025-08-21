@@ -15,34 +15,33 @@ function wressla_gcal_http_message( $code ){
 }
 
 function wressla_gcal_get_token(){
-    $token  = sanitize_text_field( get_option( 'wressla_gcal_token', '' ) );
-    $expiry = intval( get_option( 'wressla_gcal_token_expiry', 0 ) );
-    if ( $expiry && time() >= $expiry ) {
+    $token = sanitize_text_field( get_option( 'wressla_gcal_token', '' ) );
+    $exp   = intval( get_option( 'wressla_gcal_token_exp', 0 ) );
+    if ( $token && $exp && time() >= $exp ) {
         delete_option( 'wressla_gcal_token' );
-        delete_option( 'wressla_gcal_token_expiry' );
+        delete_option( 'wressla_gcal_token_exp' );
         return '';
     }
     return $token;
 }
 
 function wressla_gcal_save_token(){
-    // Short-lived tokens are stored; consider using a service account or
-    // requesting offline access with refresh tokens for more reliable access.
     check_ajax_referer( 'wressla_gcal', 'nonce' );
     if ( ! current_user_can( 'manage_options' ) ) {
         wp_send_json_error( 'forbidden' );
     }
-    $token  = sanitize_text_field( $_POST['token'] ?? '' );
-    $expiry = intval( $_POST['expiry'] ?? 0 );
+    $token   = sanitize_text_field( $_POST['token'] ?? '' );
+    $expires = intval( $_POST['expires'] ?? 0 );
     if ( empty( $token ) ) {
         wp_send_json_error( 'empty' );
     }
     update_option( 'wressla_gcal_token', $token, false );
-    if ( $expiry ) {
-        update_option( 'wressla_gcal_token_expiry', $expiry, false );
+    if ( $expires > 0 ) {
+        update_option( 'wressla_gcal_token_exp', $expires, false );
     } else {
-        delete_option( 'wressla_gcal_token_expiry' );
+        delete_option( 'wressla_gcal_token_exp' );
     }
+    // TODO: consider service accounts or refresh tokens for longer-lived access
 
     $opts = get_option( 'wressla_core_options', [] );
     $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
@@ -77,8 +76,8 @@ function wressla_gcal_check_connection( $api_key, $client_id ){
     $code = wp_remote_retrieve_response_code( $resp );
     if ( 401 === $code ) {
         delete_option( 'wressla_gcal_token' );
-        delete_option( 'wressla_gcal_token_expiry' );
-        return new WP_Error( 'wressla_gcal_token_expired', wressla_gcal_http_message( $code ) );
+        delete_option( 'wressla_gcal_token_exp' );
+        return new WP_Error( 'wressla_gcal_unauthorized', wressla_gcal_http_message( $code ) );
     }
     if ( 200 !== $code ) {
         return new WP_Error( 'wressla_gcal_http', wressla_gcal_http_message( $code ) );
@@ -113,7 +112,6 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
     $opts      = get_option( 'wressla_core_options', [] );
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
     $token     = wressla_gcal_get_token();
-    if ( empty( $token ) ) return true;
 
     $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
     $start = new DateTime('@'.$start_ts);
@@ -138,7 +136,7 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
     $code = wp_remote_retrieve_response_code( $resp );
     if ( 401 === $code ) {
         delete_option( 'wressla_gcal_token' );
-        delete_option( 'wressla_gcal_token_expiry' );
+        delete_option( 'wressla_gcal_token_exp' );
         return true;
     }
     if ( $code !== 200 ) return true;
@@ -216,11 +214,11 @@ function wressla_gcal_add_booking_event( $booking_id ){
         error_log( 'GCal insert error: ' . $resp->get_error_message() );
     } else {
         $code = wp_remote_retrieve_response_code( $resp );
-        if ( $code === 401 ) {
+        if ( 401 === $code ) {
             delete_option( 'wressla_gcal_token' );
-            delete_option( 'wressla_gcal_token_expiry' );
-            error_log( 'GCal insert error: HTTP 401' );
-        } elseif ( $code >= 300 ) {
+            delete_option( 'wressla_gcal_token_exp' );
+        }
+        if ( $code >= 300 ) {
             error_log( 'GCal insert error: HTTP ' . $code );
         }
     }
