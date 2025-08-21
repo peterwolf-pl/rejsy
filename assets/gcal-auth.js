@@ -1,13 +1,13 @@
-(function(){
+ (function(){
     const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
     const SCOPES = 'https://www.googleapis.com/auth/calendar';
     let tokenClient;
     let gapiInited = false;
     let gisInited = false;
 
-    function gapiLoaded(){
+    window.gapiLoaded = function(){
         gapi.load('client', initializeGapiClient);
-    }
+    };
     async function initializeGapiClient(){
         await gapi.client.init({
             apiKey: wresslaGCal.apiKey,
@@ -16,7 +16,7 @@
         gapiInited = true;
         maybeEnableButtons();
     }
-    function gisLoaded(){
+    window.gisLoaded = function(){
         tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: wresslaGCal.clientId,
             scope: SCOPES,
@@ -24,7 +24,7 @@
         });
         gisInited = true;
         maybeEnableButtons();
-    }
+    };
     function maybeEnableButtons(){
         if (gapiInited && gisInited) {
             const btn = document.getElementById('authorize_button');
@@ -57,7 +57,7 @@
         } else {
             tokenClient.requestAccessToken({prompt:''});
         }
-    }
+    };
     window.handleSignoutClick = function(){
         const token = gapi.client.getToken();
         if (token !== null) {
@@ -70,7 +70,7 @@
             if (authorize) authorize.innerText = 'Authorize';
             if (signout) signout.style.display = 'none';
         }
-    }
+    };
     async function listUpcomingEvents(){
         let response;
         try {
@@ -96,14 +96,4 @@
         const output = events.reduce((str, event) => `${str}${event.summary} (${event.start.dateTime || event.start.date})\n`, 'Events:\n');
         if (content) content.innerText = output;
     }
-    document.addEventListener('DOMContentLoaded', () => {
-        const s1 = document.createElement('script');
-        s1.src = 'https://apis.google.com/js/api.js';
-        s1.async = true; s1.defer = true; s1.onload = gapiLoaded;
-        document.body.appendChild(s1);
-        const s2 = document.createElement('script');
-        s2.src = 'https://accounts.google.com/gsi/client';
-        s2.async = true; s2.defer = true; s2.onload = gisLoaded;
-        document.body.appendChild(s2);
-    });
 })();

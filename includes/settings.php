@@ -18,6 +18,8 @@ function wressla_bookings_calendar_page(){
         echo '<button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button> ';
         echo '<button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>';
         echo '<pre id="content" style="white-space:pre-wrap;"></pre>';
+        echo '<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>';
+        echo '<script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>';
     } else {
         echo '<p>' . esc_html__( 'Brak konfiguracji kalendarza Google.', 'wressla-core' ) . '</p>';
     }
@@ -110,6 +112,8 @@ function wressla_settings_page(){
                     <button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button>
                     <button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>
                     <pre id="content" style="white-space:pre-wrap;"></pre>
+                    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+                    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
                 </td></tr>
                 <?php endif; ?>
                 <tr><th>Status połączenia</th><td>
