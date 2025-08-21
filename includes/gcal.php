@@ -24,6 +24,17 @@ function wressla_gcal_save_token(){
         wp_send_json_error( 'empty' );
     }
     update_option( 'wressla_gcal_token', $token, false );
+
+    $opts = get_option( 'wressla_core_options', [] );
+    $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
+    $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
+    if ( $api_key && $client_id ) {
+        $cache_key = 'wressla_gcal_conn_' . md5( $api_key . '|' . $client_id );
+        delete_transient( $cache_key );
+        $status = wressla_gcal_check_connection( $api_key, $client_id );
+        set_transient( $cache_key, $status, 10 * MINUTE_IN_SECONDS );
+    }
+
     wp_send_json_success();
 }
 add_action( 'wp_ajax_wressla_gcal_save_token', 'wressla_gcal_save_token' );
