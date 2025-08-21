@@ -14,12 +14,33 @@ function wressla_gcal_http_message( $code ){
     }
 }
 
+function wressla_gcal_save_token(){
+    check_ajax_referer( 'wressla_gcal', 'nonce' );
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'forbidden' );
+    }
+    $token = sanitize_text_field( $_POST['token'] ?? '' );
+    if ( empty( $token ) ) {
+        wp_send_json_error( 'empty' );
+    }
+    update_option( 'wressla_gcal_token', $token, false );
+    wp_send_json_success();
+}
+add_action( 'wp_ajax_wressla_gcal_save_token', 'wressla_gcal_save_token' );
+
 function wressla_gcal_check_connection( $api_key, $client_id ){
     if ( empty( $api_key ) || empty( $client_id ) ) {
         return new WP_Error( 'wressla_gcal_missing', __( 'Brak konfiguracji.', 'wressla-core' ) );
     }
-    $url  = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode( $client_id ) . '?key=' . $api_key;
-    $resp = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    $token = sanitize_text_field( get_option( 'wressla_gcal_token', '' ) );
+    if ( empty( $token ) ) {
+        return new WP_Error( 'wressla_gcal_token', __( 'Brak tokenu OAuth.', 'wressla-core' ) );
+    }
+    $url  = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=1&key=' . $api_key;
+    $resp = wp_remote_get( $url, [
+        'headers' => [ 'Authorization' => 'Bearer ' . $token ],
+        'timeout' => 10,
+    ] );
     if ( is_wp_error( $resp ) ) {
         return $resp;
     }
@@ -56,7 +77,7 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
 
     $opts      = get_option( 'wressla_core_options', [] );
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
-    $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
+    $token     = sanitize_text_field( get_option( 'wressla_gcal_token', '' ) );
 
     $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
     $start = new DateTime('@'.$start_ts);
@@ -73,8 +94,10 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
         'maxResults' => 1,
         'key' => $api_key
     ];
-    $url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($client_id) . '/events?' . http_build_query($params);
-    $resp = wp_remote_get( $url );
+    $url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?' . http_build_query($params);
+    $resp = wp_remote_get( $url, [
+        'headers' => [ 'Authorization' => 'Bearer ' . $token ]
+    ] );
     if ( is_wp_error($resp) ) return true;
     $code = wp_remote_retrieve_response_code( $resp );
     if ( $code !== 200 ) return true;
@@ -92,7 +115,11 @@ function wressla_gcal_add_booking_event( $booking_id ){
 
     $opts      = get_option( 'wressla_core_options', [] );
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
-    $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
+    $token     = sanitize_text_field( get_option( 'wressla_gcal_token', '' ) );
+    if ( empty( $token ) ) {
+        error_log( 'GCal insert skipped: no token' );
+        return;
+    }
 
     $meta = get_post_meta($booking_id);
     $data = [];
@@ -132,9 +159,15 @@ function wressla_gcal_add_booking_event( $booking_id ){
         'location' => function_exists('wressla_get_location') ? wressla_get_location() : ''
     ];
 
-    $url = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($client_id) . '/events?key=' . $api_key;
+    $url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+    if ( ! empty( $api_key ) ) {
+        $url .= '?key=' . $api_key;
+    }
     $resp = wp_remote_post( $url, [
-        'headers' => [ 'Content-Type' => 'application/json' ],
+        'headers' => [
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $token,
+        ],
         'body'    => wp_json_encode( $event ),
         'timeout' => 15,
     ] );

@@ -11,16 +11,34 @@ function wressla_bookings_calendar_page(){
     if ( ! current_user_can('manage_options') ) return;
     $opts      = get_option('wressla_core_options',[]);
     $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
-    $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
+    $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
     echo '<div class="wrap"><h1>' . esc_html__( 'Kalendarz rezerwacji', 'wressla-core' ) . '</h1>';
-    if ( $client_id ) {
-        $src = 'https://calendar.google.com/calendar/embed?src=' . rawurlencode( $client_id ) . '&ctz=' . rawurlencode( $tz );
-        echo '<iframe src="' . esc_url( $src ) . '" style="border:0" width="100%" height="600" frameborder="0" scrolling="no"></iframe>';
+    if ( $client_id && $api_key ) {
+        echo '<p>' . esc_html__( 'Autoryzuj dostęp do kalendarza Google, aby zobaczyć rezerwacje.', 'wressla-core' ) . '</p>';
+        echo '<button id="authorize_button" style="visibility:hidden">Authorize</button> ';
+        echo '<button id="signout_button" style="visibility:hidden">Sign Out</button>';
+        echo '<pre id="content" style="white-space:pre-wrap;"></pre>';
     } else {
         echo '<p>' . esc_html__( 'Brak konfiguracji kalendarza Google.', 'wressla-core' ) . '</p>';
     }
     echo '</div>';
 }
+
+function wressla_gcal_admin_scripts( $hook ){
+    if ( 'wressla-core_page_wressla-bookings-calendar' !== $hook ) return;
+    $opts = get_option('wressla_core_options',[]);
+    $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
+    $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
+    if ( empty( $client_id ) || empty( $api_key ) ) return;
+    wp_enqueue_script( 'wressla-gcal-auth', WRESSLA_CORE_URL . 'assets/gcal-auth.js', [], WRESSLA_CORE_VER, true );
+    wp_localize_script( 'wressla-gcal-auth', 'wresslaGCal', [
+        'clientId' => $client_id,
+        'apiKey'   => $api_key,
+        'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+        'nonce'    => wp_create_nonce( 'wressla_gcal' ),
+    ] );
+}
+add_action( 'admin_enqueue_scripts', 'wressla_gcal_admin_scripts' );
 
 function wressla_register_settings(){
     register_setting('wressla_core_options_group','wressla_core_options',[
