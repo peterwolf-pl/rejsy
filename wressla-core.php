@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Wressla Core
  * Description: Rezerwacje z potwierdzeniem e-mail, auto-dekrementacją miejsc i integracją z Kalendarzem (GCal + ICS). + CPT, schema, RankMath, Polylang, patterns.
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: Peter + ChatGPT
  * License: GPLv2 or later
  * Text Domain: wressla-core
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'WRESSLA_CORE_VER', '1.0.5' );
+define( 'WRESSLA_CORE_VER', '1.0.6' );
 define( 'WRESSLA_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WRESSLA_CORE_URL', plugin_dir_url( __FILE__ ) );
 

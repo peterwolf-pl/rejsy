@@ -1,6 +1,22 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+function wressla_gcal_check_connection( $api_key, $cal_id ){
+    if ( empty( $api_key ) || empty( $cal_id ) ) {
+        return new WP_Error( 'wressla_gcal_missing', __( 'Brak konfiguracji.', 'wressla-core' ) );
+    }
+    $url  = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode( $cal_id ) . '?key=' . $api_key;
+    $resp = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    if ( is_wp_error( $resp ) ) {
+        return $resp;
+    }
+    $code = wp_remote_retrieve_response_code( $resp );
+    if ( 200 !== $code ) {
+        return new WP_Error( 'wressla_gcal_http', 'HTTP ' . $code );
+    }
+    return true;
+}
+
 function wressla_gcal_is_free( $start_ts, $end_ts ){
     $opts = get_option('wressla_core_options', []);
     $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );

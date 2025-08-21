@@ -51,6 +51,16 @@ function wressla_sanitize_options($opts){
     $opts['facebook_app_secret'] = sanitize_text_field($opts['facebook_app_secret'] ?? '');
     $opts['gcal_api_key'] = sanitize_text_field($opts['gcal_api_key'] ?? '');
     $opts['gcal_calendar_id'] = sanitize_text_field($opts['gcal_calendar_id'] ?? '');
+
+    if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_calendar_id'] ) && function_exists( 'wressla_gcal_check_connection' ) ) {
+        $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_calendar_id'] );
+        if ( is_wp_error( $check ) ) {
+            add_settings_error( 'wressla_core_options', 'gcal', sprintf( __( 'Błąd połączenia z Google Calendar: %s', 'wressla-core' ), $check->get_error_message() ), 'error' );
+        } else {
+            add_settings_error( 'wressla_core_options', 'gcal', __( 'Połączenie z Google Calendar OK.', 'wressla-core' ), 'updated' );
+        }
+    }
+
     return $opts;
 }
 
@@ -60,6 +70,7 @@ function wressla_settings_page(){
     ?>
     <div class="wrap">
         <h1>Wressla – Ustawienia</h1>
+        <?php settings_errors(); ?>
         <form method="post" action="options.php">
             <?php settings_fields('wressla_core_options_group'); ?>
             <table class="form-table">
@@ -73,6 +84,20 @@ function wressla_settings_page(){
                 <tr><th>Lokalizacja (mapa/spotkanie)</th><td><input type="text" name="wressla_core_options[location]" value="<?php echo esc_attr($opts['location'] ?? 'Wrocław, Polska'); ?>" size="60"></td></tr>
                 <tr><th>Google Calendar API Key</th><td><input type="text" name="wressla_core_options[gcal_api_key]" value="<?php echo esc_attr($opts['gcal_api_key'] ?? ''); ?>" size="60"></td></tr>
                 <tr><th>ID kalendarza Google</th><td><input type="text" name="wressla_core_options[gcal_calendar_id]" value="<?php echo esc_attr($opts['gcal_calendar_id'] ?? ''); ?>" size="60"></td></tr>
+                <tr><th>Status połączenia</th><td>
+                    <?php
+                    if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_calendar_id'] ) && function_exists( 'wressla_gcal_check_connection' ) ) {
+                        $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_calendar_id'] );
+                        if ( is_wp_error( $check ) ) {
+                            echo '<span style="color:red">' . esc_html( $check->get_error_message() ) . '</span>';
+                        } else {
+                            echo '<span style="color:green">' . esc_html__( 'Połączono', 'wressla-core' ) . '</span>';
+                        }
+                    } else {
+                        echo '<span>' . esc_html__( 'Brak konfiguracji', 'wressla-core' ) . '</span>';
+                    }
+                    ?>
+                </td></tr>
                 <tr><td colspan="2">
                     <p><strong>Subskrypcja ICS (Google Calendar → From URL):</strong><br>
                     Rezerwacje: <code><?php echo esc_html( home_url('/?wressla_ics=1') ); ?></code><br>
