@@ -210,6 +210,10 @@ function wressla_handle_booking_confirmation(){
             update_post_meta($bid,'confirmed',1);
             delete_post_meta($bid,'wressla_confirm_key');
 
+            if ( function_exists('wressla_gcal_add_booking_event') ) {
+                wressla_gcal_add_booking_event( $bid );
+            }
+
             $meta = get_post_meta($bid, '', true);
             $body = "Potwierdzona rezerwacja Wressla\n\n";
             foreach( $meta as $k => $v ){

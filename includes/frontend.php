@@ -29,7 +29,12 @@ function wressla_oferta_shortcode( $atts = [] ){
 add_shortcode('wressla_oferta','wressla_oferta_shortcode');
 function wressla_kalendarz_shortcode( $atts ){
     $atts = shortcode_atts(['id'=>0], $atts);
-    $id = intval($atts['id']); if ( ! $id ) return '';
+    $id = intval($atts['id']);
+    if ( ! $id ) {
+        $id = get_the_ID();
+        if ( ! $id ) return '';
+    }
+
     if ( ! function_exists('get_field') ) return '<p>'.__('Dodaj dostępne terminy w ACF.','wressla-core').'</p>';
     $slots = get_field('wressla_slots', $id);
     if ( empty($slots) ) return '<p>'.__('Brak terminów – skontaktuj się telefonicznie.','wressla-core').'</p>';
