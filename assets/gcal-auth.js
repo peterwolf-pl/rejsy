@@ -62,9 +62,12 @@
                               + '&token=' + encodeURIComponent(token.access_token),
                     });
                     const signout = document.getElementById('signout_button');
-                    if (signout) signout.style.display = 'inline-block';
+                    if (signout){
+                        signout.style.display = 'inline-block';
+                        if (wresslaGCal.signOutText) signout.innerText = wresslaGCal.signOutText;
+                    }
                     const authorize = document.getElementById('authorize_button');
-                    if (authorize) authorize.innerText = 'Refresh';
+                    if (authorize) authorize.innerText = wresslaGCal.refreshText || 'Refresh';
                 }catch(e){
                     console.error('Token save failed', e);
                 }
@@ -91,9 +94,12 @@
         }
         gapi.client.setToken(null);
         const authorize = document.getElementById('authorize_button');
-        if (authorize) authorize.innerText = 'Authorize';
+        if (authorize) authorize.innerText = wresslaGCal.authorizeText || 'Authorize';
         const signout = document.getElementById('signout_button');
-        if (signout) signout.style.display = 'none';
+        if (signout){
+            signout.style.display = 'none';
+            if (wresslaGCal.signOutText) signout.innerText = wresslaGCal.signOutText;
+        }
         const content = document.getElementById('content');
         if (content) content.textContent = '';
     };
@@ -111,13 +117,13 @@
         const content = document.getElementById('content');
         if (!content) return;
         if (!events || !events.length){
-            content.textContent = 'No events found.';
+            content.textContent = wresslaGCal.noEventsText || 'No events found.';
             return;
         }
-        let out = 'Events:\n';
+        let out = (wresslaGCal.eventsLabel || 'Events:') + '\n';
         for (const ev of events){
             const when = ev.start.dateTime || ev.start.date || '';
-            out += `${ev.summary || '(no title)'} (${when})\n`;
+            out += `${ev.summary || wresslaGCal.noTitleText || '(no title)'} (${when})\n`;
         }
         content.textContent = out;
     }

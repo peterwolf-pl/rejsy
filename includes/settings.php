@@ -15,8 +15,8 @@ function wressla_bookings_calendar_page(){
     echo '<div class="wrap"><h1>' . esc_html__( 'Kalendarz rezerwacji', 'wressla-core' ) . '</h1>';
     if ( $client_id && $api_key ) {
         echo '<p>' . esc_html__( 'Autoryzuj dostęp do kalendarza Google, aby zobaczyć rezerwacje.', 'wressla-core' ) . '</p>';
-        echo '<button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button> ';
-        echo '<button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>';
+        echo '<button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>' . esc_html__( 'Autoryzuj', 'wressla-core' ) . '</button> ';
+        echo '<button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">' . esc_html__( 'Wyloguj', 'wressla-core' ) . '</button>';
         echo '<pre id="content" style="white-space:pre-wrap;"></pre>';
         echo '<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>';
         echo '<script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>';
@@ -36,11 +36,17 @@ function wressla_gcal_admin_scripts( $hook ){
     if ( empty( $client_id ) || empty( $api_key ) ) return;
     wp_enqueue_script( 'wressla-gcal-auth', WRESSLA_CORE_URL . 'assets/gcal-auth.js', [], WRESSLA_CORE_VER, true );
     wp_localize_script( 'wressla-gcal-auth', 'wresslaGCal', [
-        'clientId' => $client_id,
-        'apiKey'   => $api_key,
-        'calendarId' => $calendar_id,
-        'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-        'nonce'    => wp_create_nonce( 'wressla_gcal' ),
+        'clientId'     => $client_id,
+        'apiKey'       => $api_key,
+        'calendarId'   => $calendar_id,
+        'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+        'nonce'        => wp_create_nonce( 'wressla_gcal' ),
+        'authorizeText'=> __( 'Autoryzuj', 'wressla-core' ),
+        'refreshText'  => __( 'Odśwież', 'wressla-core' ),
+        'signOutText'  => __( 'Wyloguj', 'wressla-core' ),
+        'eventsLabel'  => __( 'Wydarzenia:', 'wressla-core' ),
+        'noEventsText' => __( 'Brak wydarzeń.', 'wressla-core' ),
+        'noTitleText'  => __( '(brak tytułu)', 'wressla-core' ),
     ] );
 }
 add_action( 'admin_enqueue_scripts', 'wressla_gcal_admin_scripts' );
@@ -114,8 +120,8 @@ function wressla_settings_page(){
                 <tr><th>Google Calendar ID</th><td><input type="text" name="wressla_core_options[gcal_calendar_id]" value="<?php echo esc_attr($opts['gcal_calendar_id'] ?? ''); ?>" size="60"></td></tr>
                 <?php if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_client_id'] ) ) : ?>
                 <tr><th><?php esc_html_e( 'Autoryzacja', 'wressla-core' ); ?></th><td>
-                    <button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button>
-                    <button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>
+                    <button id="authorize_button" class="button" onclick="handleAuthClick()" disabled><?php esc_html_e( 'Autoryzuj', 'wressla-core' ); ?></button>
+                    <button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none"><?php esc_html_e( 'Wyloguj', 'wressla-core' ); ?></button>
                     <pre id="content" style="white-space:pre-wrap;"></pre>
                     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
                     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
