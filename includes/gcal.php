@@ -1,6 +1,19 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+function wressla_gcal_http_message( $code ){
+    switch ( intval( $code ) ) {
+        case 401:
+            return __( 'HTTP 401: nieautoryzowano. Sprawdź klucz API i ID kalendarza.', 'wressla-core' );
+        case 403:
+            return __( 'HTTP 403: brak uprawnień do kalendarza.', 'wressla-core' );
+        case 404:
+            return __( 'HTTP 404: nie znaleziono kalendarza.', 'wressla-core' );
+        default:
+            return sprintf( __( 'HTTP %d: nieznany błąd.', 'wressla-core' ), $code );
+    }
+}
+
 function wressla_gcal_check_connection( $api_key, $cal_id ){
     if ( empty( $api_key ) || empty( $cal_id ) ) {
         return new WP_Error( 'wressla_gcal_missing', __( 'Brak konfiguracji.', 'wressla-core' ) );
@@ -12,7 +25,7 @@ function wressla_gcal_check_connection( $api_key, $cal_id ){
     }
     $code = wp_remote_retrieve_response_code( $resp );
     if ( 200 !== $code ) {
-        return new WP_Error( 'wressla_gcal_http', 'HTTP ' . $code );
+        return new WP_Error( 'wressla_gcal_http', wressla_gcal_http_message( $code ) );
     }
     return true;
 }
