@@ -30,11 +30,33 @@ function wressla_gcal_check_connection( $api_key, $cal_id ){
     return true;
 }
 
-function wressla_gcal_is_free( $start_ts, $end_ts ){
-    $opts = get_option('wressla_core_options', []);
+function wressla_gcal_connection_status(){
+    $opts   = get_option( 'wressla_core_options', [] );
     $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
     $cal_id  = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
-    if ( empty($api_key) || empty($cal_id) ) return true; // no config -> assume free
+
+    if ( empty( $api_key ) || empty( $cal_id ) ) {
+        return new WP_Error( 'wressla_gcal_missing', __( 'Brak konfiguracji.', 'wressla-core' ) );
+    }
+
+    $cache_key = 'wressla_gcal_conn_' . md5( $api_key . '|' . $cal_id );
+    $cached    = get_transient( $cache_key );
+    if ( false !== $cached ) {
+        return $cached;
+    }
+
+    $check = wressla_gcal_check_connection( $api_key, $cal_id );
+    set_transient( $cache_key, $check, 10 * MINUTE_IN_SECONDS );
+    return $check;
+}
+
+function wressla_gcal_is_free( $start_ts, $end_ts ){
+    $status = wressla_gcal_connection_status();
+    if ( is_wp_error( $status ) ) return true; // assume free if no connection
+
+    $opts    = get_option( 'wressla_core_options', [] );
+    $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
+    $cal_id  = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
 
     $tz = function_exists('wressla_get_timezone') ? wressla_get_timezone() : 'UTC';
     $start = new DateTime('@'.$start_ts);
@@ -62,10 +84,15 @@ function wressla_gcal_is_free( $start_ts, $end_ts ){
 }
 
 function wressla_gcal_add_booking_event( $booking_id ){
-    $opts = get_option('wressla_core_options', []);
+    $status = wressla_gcal_connection_status();
+    if ( is_wp_error( $status ) ) {
+        error_log( 'GCal insert skipped: ' . $status->get_error_message() );
+        return;
+    }
+
+    $opts    = get_option( 'wressla_core_options', [] );
     $api_key = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
     $cal_id  = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
-    if ( empty($api_key) || empty($cal_id) ) return; // brak konfiguracji
 
     $meta = get_post_meta($booking_id);
     $data = [];

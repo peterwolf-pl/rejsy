@@ -54,6 +54,8 @@ function wressla_sanitize_options($opts){
 
     if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_calendar_id'] ) && function_exists( 'wressla_gcal_check_connection' ) ) {
         $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_calendar_id'] );
+        $cache_key = 'wressla_gcal_conn_' . md5( $opts['gcal_api_key'] . '|' . $opts['gcal_calendar_id'] );
+        set_transient( $cache_key, $check, 10 * MINUTE_IN_SECONDS );
         if ( is_wp_error( $check ) ) {
             add_settings_error( 'wressla_core_options', 'gcal', sprintf( __( 'Błąd połączenia z Google Calendar: %s', 'wressla-core' ), $check->get_error_message() ), 'error' );
         } else {
@@ -86,8 +88,8 @@ function wressla_settings_page(){
                 <tr><th>ID kalendarza Google</th><td><input type="text" name="wressla_core_options[gcal_calendar_id]" value="<?php echo esc_attr($opts['gcal_calendar_id'] ?? ''); ?>" size="60"></td></tr>
                 <tr><th>Status połączenia</th><td>
                     <?php
-                    if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_calendar_id'] ) && function_exists( 'wressla_gcal_check_connection' ) ) {
-                        $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_calendar_id'] );
+                    if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_calendar_id'] ) && function_exists( 'wressla_gcal_connection_status' ) ) {
+                        $check = wressla_gcal_connection_status();
                         if ( is_wp_error( $check ) ) {
                             echo '<span style="color:red">' . esc_html( $check->get_error_message() ) . '</span>';
                         } else {
