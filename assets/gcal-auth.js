@@ -98,15 +98,15 @@
         if (content) content.textContent = '';
     };
 
-    async function listUpcomingEvents(){
-        const resp = await gapi.client.calendar.events.list({
-            calendarId: 'primary',
-            timeMin: (new Date()).toISOString(),
-            showDeleted: false,
-            singleEvents: true,
-            maxResults: 5,
-            orderBy: 'startTime',
-        });
+     async function listUpcomingEvents(){
+         const resp = await gapi.client.calendar.events.list({
+             calendarId: wresslaGCal.calendarId || 'primary',
+             timeMin: (new Date()).toISOString(),
+             showDeleted: false,
+             singleEvents: true,
+             maxResults: 5,
+             orderBy: 'startTime',
+         });
         const events = resp && resp.result ? resp.result.items : [];
         const content = document.getElementById('content');
         if (!content) return;

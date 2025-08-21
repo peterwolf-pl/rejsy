@@ -32,11 +32,13 @@ function wressla_gcal_admin_scripts( $hook ){
     $opts = get_option('wressla_core_options',[]);
     $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
+    $calendar_id = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
     if ( empty( $client_id ) || empty( $api_key ) ) return;
     wp_enqueue_script( 'wressla-gcal-auth', WRESSLA_CORE_URL . 'assets/gcal-auth.js', [], WRESSLA_CORE_VER, true );
     wp_localize_script( 'wressla-gcal-auth', 'wresslaGCal', [
         'clientId' => $client_id,
         'apiKey'   => $api_key,
+        'calendarId' => $calendar_id,
         'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'wressla_gcal' ),
     ] );
@@ -56,7 +58,8 @@ function wressla_register_settings(){
             'facebook_app_id' => '',
             'facebook_app_secret' => '',
             'gcal_api_key' => '',
-            'gcal_client_id' => ''
+            'gcal_client_id' => '',
+            'gcal_calendar_id' => ''
         ]
     ]);
 }
@@ -72,10 +75,11 @@ function wressla_sanitize_options($opts){
     $opts['facebook_app_secret'] = sanitize_text_field($opts['facebook_app_secret'] ?? '');
     $opts['gcal_api_key'] = sanitize_text_field($opts['gcal_api_key'] ?? '');
     $opts['gcal_client_id'] = sanitize_text_field($opts['gcal_client_id'] ?? '');
+    $opts['gcal_calendar_id'] = sanitize_text_field($opts['gcal_calendar_id'] ?? '');
 
     if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_client_id'] ) && function_exists( 'wressla_gcal_check_connection' ) ) {
-        $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_client_id'] );
-        $cache_key = 'wressla_gcal_conn_' . md5( $opts['gcal_api_key'] . '|' . $opts['gcal_client_id'] );
+        $check = wressla_gcal_check_connection( $opts['gcal_api_key'], $opts['gcal_client_id'], $opts['gcal_calendar_id'] );
+        $cache_key = 'wressla_gcal_conn_' . md5( $opts['gcal_api_key'] . '|' . $opts['gcal_client_id'] . '|' . $opts['gcal_calendar_id'] );
         set_transient( $cache_key, $check, 10 * MINUTE_IN_SECONDS );
         if ( is_wp_error( $check ) ) {
             add_settings_error( 'wressla_core_options', 'gcal', sprintf( __( 'Błąd połączenia z Google Calendar: %s', 'wressla-core' ), $check->get_error_message() ), 'error' );
@@ -107,6 +111,7 @@ function wressla_settings_page(){
                 <tr><th>Lokalizacja (mapa/spotkanie)</th><td><input type="text" name="wressla_core_options[location]" value="<?php echo esc_attr($opts['location'] ?? 'Wrocław, Polska'); ?>" size="60"></td></tr>
                 <tr><th>Google Calendar API Key</th><td><input type="text" name="wressla_core_options[gcal_api_key]" value="<?php echo esc_attr($opts['gcal_api_key'] ?? ''); ?>" size="60"></td></tr>
                 <tr><th>Google Calendar Client ID</th><td><input type="text" name="wressla_core_options[gcal_client_id]" value="<?php echo esc_attr($opts['gcal_client_id'] ?? ''); ?>" size="60"></td></tr>
+                <tr><th>Google Calendar ID</th><td><input type="text" name="wressla_core_options[gcal_calendar_id]" value="<?php echo esc_attr($opts['gcal_calendar_id'] ?? ''); ?>" size="60"></td></tr>
                 <?php if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_client_id'] ) ) : ?>
                 <tr><th><?php esc_html_e( 'Autoryzacja', 'wressla-core' ); ?></th><td>
                     <button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button>
