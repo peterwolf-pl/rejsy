@@ -25,7 +25,8 @@ function wressla_bookings_calendar_page(){
 }
 
 function wressla_gcal_admin_scripts( $hook ){
-    if ( 'wressla-core_page_wressla-bookings-calendar' !== $hook ) return;
+    $hooks = [ 'wressla-core_page_wressla-bookings-calendar', 'toplevel_page_wressla-core' ];
+    if ( ! in_array( $hook, $hooks, true ) ) return;
     $opts = get_option('wressla_core_options',[]);
     $client_id = sanitize_text_field( $opts['gcal_client_id'] ?? '' );
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
@@ -104,6 +105,13 @@ function wressla_settings_page(){
                 <tr><th>Lokalizacja (mapa/spotkanie)</th><td><input type="text" name="wressla_core_options[location]" value="<?php echo esc_attr($opts['location'] ?? 'Wrocław, Polska'); ?>" size="60"></td></tr>
                 <tr><th>Google Calendar API Key</th><td><input type="text" name="wressla_core_options[gcal_api_key]" value="<?php echo esc_attr($opts['gcal_api_key'] ?? ''); ?>" size="60"></td></tr>
                 <tr><th>Google Calendar Client ID</th><td><input type="text" name="wressla_core_options[gcal_client_id]" value="<?php echo esc_attr($opts['gcal_client_id'] ?? ''); ?>" size="60"></td></tr>
+                <?php if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_client_id'] ) ) : ?>
+                <tr><th><?php esc_html_e( 'Autoryzacja', 'wressla-core' ); ?></th><td>
+                    <button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button>
+                    <button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>
+                    <pre id="content" style="white-space:pre-wrap;"></pre>
+                </td></tr>
+                <?php endif; ?>
                 <tr><th>Status połączenia</th><td>
                     <?php
                     if ( ! empty( $opts['gcal_api_key'] ) && ! empty( $opts['gcal_client_id'] ) && function_exists( 'wressla_gcal_connection_status' ) ) {
