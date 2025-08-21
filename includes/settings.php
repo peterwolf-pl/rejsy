@@ -34,7 +34,7 @@ function wressla_gcal_admin_scripts( $hook ){
     $api_key   = sanitize_text_field( $opts['gcal_api_key'] ?? '' );
     $calendar_id = sanitize_text_field( $opts['gcal_calendar_id'] ?? '' );
     if ( empty( $client_id ) || empty( $api_key ) ) return;
-    wp_enqueue_script( 'wressla-gcal-auth', WRESSLA_CORE_URL . 'assets/gcal-auth.js', [], WRESSLA_CORE_VER, true );
+    wp_enqueue_script( 'wressla-gcal-auth', WRESSLA_CORE_URL . 'assets/gcal-auth.js', [], WRESSLA_CORE_VER, false );
     wp_localize_script( 'wressla-gcal-auth', 'wresslaGCal', [
         'clientId'     => $client_id,
         'apiKey'       => $api_key,
