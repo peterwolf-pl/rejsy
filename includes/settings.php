@@ -15,8 +15,8 @@ function wressla_bookings_calendar_page(){
     echo '<div class="wrap"><h1>' . esc_html__( 'Kalendarz rezerwacji', 'wressla-core' ) . '</h1>';
     if ( $client_id && $api_key ) {
         echo '<p>' . esc_html__( 'Autoryzuj dostęp do kalendarza Google, aby zobaczyć rezerwacje.', 'wressla-core' ) . '</p>';
-        echo '<button id="authorize_button" onclick="handleAuthClick()" style="visibility:hidden">Authorize</button> ';
-        echo '<button id="signout_button" onclick="handleSignoutClick()" style="visibility:hidden">Sign Out</button>';
+        echo '<button id="authorize_button" class="button" onclick="handleAuthClick()" disabled>Authorize</button> ';
+        echo '<button id="signout_button" class="button" onclick="handleSignoutClick()" style="display:none">Sign Out</button>';
         echo '<pre id="content" style="white-space:pre-wrap;"></pre>';
     } else {
         echo '<p>' . esc_html__( 'Brak konfiguracji kalendarza Google.', 'wressla-core' ) . '</p>';

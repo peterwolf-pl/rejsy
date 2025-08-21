@@ -28,7 +28,7 @@
     function maybeEnableButtons(){
         if (gapiInited && gisInited) {
             const btn = document.getElementById('authorize_button');
-            if (btn) btn.style.visibility = 'visible';
+            if (btn) btn.removeAttribute('disabled');
         }
     }
     window.handleAuthClick = function(){
@@ -39,7 +39,7 @@
             }
             const signout = document.getElementById('signout_button');
             const authorize = document.getElementById('authorize_button');
-            if (signout) signout.style.visibility = 'visible';
+            if (signout) signout.style.display = 'inline-block';
             if (authorize) authorize.innerText = 'Refresh';
             const token = gapi.client.getToken();
             if (token) {
@@ -68,7 +68,7 @@
             const authorize = document.getElementById('authorize_button');
             const signout = document.getElementById('signout_button');
             if (authorize) authorize.innerText = 'Authorize';
-            if (signout) signout.style.visibility = 'hidden';
+            if (signout) signout.style.display = 'none';
         }
     }
     async function listUpcomingEvents(){
